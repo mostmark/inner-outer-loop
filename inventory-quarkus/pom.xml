@@ -78,7 +78,15 @@
         <dependency>
           <groupId>io.quarkus</groupId>
           <artifactId>quarkus-smallrye-health</artifactId>
-        </dependency> 
+        </dependency>
+        <dependency>
+          <groupId>io.quarkus</groupId>
+          <artifactId>quarkus-kubernetes-config</artifactId> 
+        </dependency>
+        <dependency>
+          <groupId>io.quarkus</groupId>
+          <artifactId>quarkus-jdbc-mariadb</artifactId> 
+        </dependency>
     </dependencies>
 
   <build>
