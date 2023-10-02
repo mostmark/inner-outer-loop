@@ -7,7 +7,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 
 @QuarkusTest
-public class InventoryResourceTest {
+public class GreetingResourceTest {
 
     @Test
     public void testHelloEndpoint() {
@@ -15,7 +15,7 @@ public class InventoryResourceTest {
           .when().get("/hello")
           .then()
              .statusCode(200)
-             .body(is("hello"));
+             .body(is("Hello from RESTEasy Reactive"));
     }
 
 }
