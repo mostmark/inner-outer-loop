@@ -21,8 +21,8 @@ public class InventoryResource {
     @GET
     @Path("/{itemId}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Counted
-    @Timed
+    @Counted(value = "inventory_coolstore", description = "Number of times the inventory service has been invoked")
+    @Timed(value = "inventory_coolstore", description = "How long it takes to retrieve the inventory value")
     public Inventory getAvailability(@PathParam("itemId") String itemId) {
         Inventory inventory = em.find(Inventory.class, itemId);
         return inventory;
