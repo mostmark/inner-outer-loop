@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: inventory-coolstore
+  name: inventory
+  namespace: coolstore
+spec:
+  endpoints:
+  - interval: 30s
+    port: 8080-tcp
+    scheme: http
+    path: /q/metrics 
+  selector:
+    matchLabels:
+      app: inventory-coolstore
