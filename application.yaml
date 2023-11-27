@@ -1,0 +1,434 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: view
+  namespace: coolstore
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: coolstore
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: inventory-mariadb
+type: Opaque
+stringData:
+  database-name: inventorydb
+  database-password: inventory
+  database-root-password: inventoryadmin
+  database-user: inventory
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-mariadb
+  labels:
+    app.openshift.io/runtime: mariadb
+    app: inventory-mariadb
+spec:
+  volumes:
+    - name: inventory-mariadb-data
+      emptyDir: {}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-mariadb
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: inventory-mariadb
+    spec:
+      containers:
+      - image: registry.redhat.io/rhel8/mariadb-103:1-223
+        name: mariadb
+        imagePullPolicy: IfNotPresent
+        resources:
+            limits:
+              memory: 512Mi
+        terminationMessagePolicy: File
+        terminationMessagePath: /dev/termination-log
+        readinessProbe:
+          exec:
+            command:
+              - /bin/sh
+              - '-i'
+              - '-c'
+              - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -u $MYSQL_USER ping
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          exec:
+            command:
+              - /bin/sh
+              - '-i'
+              - '-c'
+              - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -u $MYSQL_USER ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                name: inventory-mariadb
+                key: database-user
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: inventory-mariadb
+                key: database-password
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: inventory-mariadb
+                key: database-root-password
+          - name: MYSQL_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: inventory-mariadb
+                key: database-name
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: inventory-mariadb
+  labels:
+    app.openshift.io/runtime: mariadb
+spec:
+  ports:
+    - name: mariadb
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: inventory-mariadb
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory
+  labels:
+    app: coolstore
+    app.kubernetes.io/instance: inventory
+data:
+  application.properties: |-
+    quarkus.datasource.jdbc.url=jdbc:mariadb://inventory-mariadb.coolstore.svc:3306/inventorydb
+    quarkus.datasource.username=inventory
+    quarkus.datasource.password=inventory
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"inventory-mariadb"}]'
+  labels:
+    app: inventory-coolstore
+    app.openshift.io/runtime: quarkus
+  name: inventory-coolstore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-coolstore
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: inventory-coolstore
+    spec:
+      containers:
+      - image: quay.io/mostmark/inventory-coolstore:latest
+        name: inventory-coolstore
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-coolstore
+spec:
+  ports:
+  - name: 8080-tcp
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: inventory-coolstore
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: inventory-coolstore
+spec:
+  port:
+    targetPort: 8080-tcp
+  to:
+    kind: Service
+    name: inventory-coolstore
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: catalog-postgresql
+type: Opaque
+stringData:
+  database-name: catalogdb
+  database-password: catalog
+  database-user: catalog
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-postgresql
+  labels:
+    app.openshift.io/runtime: postgresql
+    app: catalog-postgresql
+spec:
+  volumes:
+    - name: catalog-postgresql-data
+      emptyDir: {}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-postgresql
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: catalog-postgresql
+    spec:
+      containers:
+      - image: registry.redhat.io/rhel8/postgresql-10:1-232
+        name: postgresql
+        imagePullPolicy: IfNotPresent
+        resources:
+            limits:
+              memory: 512Mi
+        terminationMessagePolicy: File
+        terminationMessagePath: /dev/termination-log
+        readinessProbe:
+          exec:
+            command:
+              - /usr/libexec/check-container
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3       
+        livenessProbe:
+          exec:
+            command:
+              - /usr/libexec/check-container
+              - '--live'
+          initialDelaySeconds: 120
+          timeoutSeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: POSTGRESQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: catalog-postgresql
+              key: database-user
+        - name: POSTGRESQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: catalog-postgresql
+              key: database-password
+        - name: POSTGRESQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: catalog-postgresql
+              key: database-name
+        securityContext:
+            capabilities: {}
+            privileged: false
+        ports:
+          - containerPort: 5432
+            protocol: TCP
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: catalog-postgresql
+  labels:
+    app.openshift.io/runtime: postgresql
+spec:
+  ports:
+    - name: postgresql
+      protocol: TCP
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: catalog-postgresql
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog
+  labels:
+    app: coolstore
+    app.kubernetes.io/instance: catalog
+data:
+  application.properties: |-
+    spring.datasource.url=jdbc:postgresql://catalog-postgresql.coolstore.svc:5432/catalogdb
+    spring.datasource.username=catalog
+    spring.datasource.password=catalog
+    spring.datasource.driver-class-name=org.postgresql.Driver
+    spring.jpa.hibernate.ddl-auto=create
+    spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation=true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"catalog-postgresql"}]'
+  labels:
+    app: catalog-coolstore
+    app.openshift.io/runtime: spring-boot
+  name: catalog-coolstore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-coolstore
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: catalog-coolstore
+    spec:
+      containers:
+      - image: quay.io/mostmark/catalog-coolstore:latest
+        name: catalog-coolstore
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-coolstore
+spec:
+  ports:
+  - name: 8080-tcp
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: catalog-coolstore
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: catalog-coolstore
+spec:
+  port:
+    targetPort: 8080-tcp
+  to:
+    kind: Service
+    name: catalog-coolstore
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"catalog-coolstore"},{"apiVersion":"apps/v1","kind":"Deployment","name":"inventory-coolstore"}]'
+  labels:
+    app: gateway-coolstore
+    app.openshift.io/runtime: dotnet
+  name: gateway-coolstore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-coolstore
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: gateway-coolstore
+    spec:
+      containers:
+      - image: quay.io/mostmark/gateway-coolstore:latest
+        name: gateway-coolstore
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-coolstore
+spec:
+  ports:
+  - name: 8080-tcp
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: gateway-coolstore
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: gateway-coolstore
+spec:
+  port:
+    targetPort: 8080-tcp
+  to:
+    kind: Service
+    name: gateway-coolstore
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"gateway-coolstore"}]'
+  labels:
+    app: web-coolstore
+    app.openshift.io/runtime: nodejs
+  name: web-coolstore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-coolstore
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: web-coolstore
+    spec:
+      containers:
+      - image: quay.io/mostmark/web-coolstore:latest
+        name: web-coolstore
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-coolstore
+spec:
+  ports:
+  - name: 8080-tcp
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: web-coolstore
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: web-coolstore
+spec:
+  port:
+    targetPort: 8080-tcp
+  to:
+    kind: Service
+    name: web-coolstore

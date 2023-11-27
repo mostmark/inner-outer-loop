@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/instance: catalog
 data:
   application.properties: |-
-    spring.datasource.url=jdbc:postgresql://catalog-postgresql.test-coolstore.svc:5432/catalogdb
+    spring.datasource.url=jdbc:postgresql://catalog-postgresql.coolstore.svc:5432/catalogdb
     spring.datasource.username=catalog
     spring.datasource.password=catalog
     spring.datasource.driver-class-name=org.postgresql.Driver
