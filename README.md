@@ -3,4 +3,4 @@
 To deploy the application:
 
     oc new-project coolstore
-    oc create -f ./application.yaml
+    oc create -f https://raw.githubusercontent.com/mostmark/inner-outer-loop/main/application.yaml
