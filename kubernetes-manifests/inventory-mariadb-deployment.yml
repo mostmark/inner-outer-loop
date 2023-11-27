@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-mariadb
+  labels:
+    app.openshift.io/runtime: mariadb
+    app: inventory-mariadb
+spec:
+  volumes:
+    - name: inventory-mariadb-data
+      emptyDir: {}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-mariadb
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: inventory-mariadb
+    spec:
+      containers:
+      - image: registry.redhat.io/rhel8/mariadb-103:1-223
+        name: mariadb
+        imagePullPolicy: IfNotPresent
+        resources:
+            limits:
+              memory: 512Mi
+        terminationMessagePolicy: File
+        terminationMessagePath: /dev/termination-log
+        readinessProbe:
+          exec:
+            command:
+              - /bin/sh
+              - '-i'
+              - '-c'
+              - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -u $MYSQL_USER ping
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          exec:
+            command:
+              - /bin/sh
+              - '-i'
+              - '-c'
+              - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -u $MYSQL_USER ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                name: inventory-mariadb
+                key: database-user
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: inventory-mariadb
+                key: database-password
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: inventory-mariadb
+                key: database-root-password
+          - name: MYSQL_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: inventory-mariadb
+                key: database-name

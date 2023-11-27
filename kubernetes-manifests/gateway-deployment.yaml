@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"catalog-coolstore"},{"apiVersion":"apps/v1","kind":"Deployment","name":"inventory-coolstore"}]'
+  labels:
+    app: gateway-coolstore
+    app.openshift.io/runtime: dotnet
+  name: gateway-coolstore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-coolstore
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: gateway-coolstore
+    spec:
+      containers:
+      - image: quay.io/mostmark/gateway-coolstore:latest
+        name: gateway-coolstore

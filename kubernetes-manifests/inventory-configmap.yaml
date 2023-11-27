@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory
+  labels:
+    app: coolstore
+    app.kubernetes.io/instance: inventory
+data:
+  application.properties: |-
+    quarkus.datasource.jdbc.url=jdbc:mariadb://inventory-mariadb.coolstore.svc:3306/inventorydb
+    quarkus.datasource.username=inventory
+    quarkus.datasource.password=inventory

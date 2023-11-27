@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog
+  labels:
+    app: coolstore
+    app.kubernetes.io/instance: catalog
+data:
+  application.properties: |-
+    spring.datasource.url=jdbc:postgresql://catalog-postgresql.test-coolstore.svc:5432/catalogdb
+    spring.datasource.username=catalog
+    spring.datasource.password=catalog
+    spring.datasource.driver-class-name=org.postgresql.Driver
+    spring.jpa.hibernate.ddl-auto=create
+    spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation=true

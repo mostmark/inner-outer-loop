@@ -1,0 +1,10 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: gateway-coolstore
+spec:
+  port:
+    targetPort: 8080-tcp
+  to:
+    kind: Service
+    name: gateway-coolstore

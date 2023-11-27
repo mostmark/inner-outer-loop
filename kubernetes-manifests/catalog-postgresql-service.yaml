@@ -1,0 +1,14 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: catalog-postgresql
+  labels:
+    app.openshift.io/runtime: postgresql
+spec:
+  ports:
+    - name: postgresql
+      protocol: TCP
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: catalog-postgresql
