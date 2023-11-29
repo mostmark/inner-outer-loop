@@ -124,7 +124,7 @@ metadata:
     app.kubernetes.io/instance: inventory
 data:
   application.properties: |-
-    quarkus.datasource.jdbc.url=jdbc:mariadb://inventory-mariadb.coolstore.svc:3306/inventorydb
+    quarkus.datasource.jdbc.url=jdbc:mariadb://inventory-mariadb:3306/inventorydb
     quarkus.datasource.username=inventory
     quarkus.datasource.password=inventory
 ---
@@ -282,7 +282,7 @@ metadata:
     app.kubernetes.io/instance: catalog
 data:
   application.properties: |-
-    spring.datasource.url=jdbc:postgresql://catalog-postgresql.coolstore.svc:5432/catalogdb
+    spring.datasource.url=jdbc:postgresql://catalog-postgresql:5432/catalogdb
     spring.datasource.username=catalog
     spring.datasource.password=catalog
     spring.datasource.driver-class-name=org.postgresql.Driver
